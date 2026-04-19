@@ -16,3 +16,7 @@ venv/
 *.egg
 ._*
 .DS_Store
+
+.env
+.env.local
+.env.*.local
