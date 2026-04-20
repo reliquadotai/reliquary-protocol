@@ -3,6 +3,31 @@
 from __future__ import annotations
 
 from .artifacts import ArtifactType, ArtifactTypes, content_addressable_id
+from .bridge import (
+    BRIDGE_VERSION,
+    BridgeEnvelope,
+    BridgeError,
+    BridgeSchemaError,
+    BridgeSignatureError,
+    BridgeSigner,
+    BridgeVerifier,
+    BridgeVersionMismatch,
+    CHECKPOINT_ATTESTATION_TYPE,
+    CheckpointAttestation,
+    HmacBridgeSigner,
+    HmacBridgeVerifier,
+    POLICY_COMMITMENT_TYPE,
+    PolicyCommitment,
+    ROLLOUT_BUNDLE_TYPE,
+    RolloutBundle,
+    build_checkpoint_attestation,
+    build_policy_commitment,
+    build_rollout_bundle,
+    envelope_from_dict,
+    sign_envelope,
+    verify_envelope,
+    verify_policy_commitment,
+)
 from .canonicalization import (
     CANONICAL_SEPARATORS,
     canonical_bytes,
@@ -45,7 +70,7 @@ from .signatures import (
 )
 
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 
 __all__ = [
@@ -53,8 +78,18 @@ __all__ = [
     "ATTN_IMPLEMENTATION",
     "ArtifactType",
     "ArtifactTypes",
+    "BRIDGE_VERSION",
+    "BridgeEnvelope",
+    "BridgeError",
+    "BridgeSchemaError",
+    "BridgeSignatureError",
+    "BridgeSigner",
+    "BridgeVerifier",
+    "BridgeVersionMismatch",
     "CANONICAL_SEPARATORS",
     "CHALLENGE_K",
+    "CHECKPOINT_ATTESTATION_TYPE",
+    "CheckpointAttestation",
     "COPYCAT_AMBIGUITY_WINDOW_SECONDS",
     "COPYCAT_GATE_DURATION_WINDOWS",
     "COPYCAT_INTERVAL_LENGTH",
@@ -63,6 +98,8 @@ __all__ = [
     "DISTRIBUTION_MIN_POSITIONS",
     "DISTRIBUTION_RATIO_BAND_HIGH",
     "DISTRIBUTION_RATIO_BAND_LOW",
+    "HmacBridgeSigner",
+    "HmacBridgeVerifier",
     "LAYER_INDEX",
     "LEDGER_PROOF_VERSION",
     "LOGPROB_DRIFT_QUORUM",
@@ -71,6 +108,8 @@ __all__ = [
     "MESH_OUTLIER_RATE_GATE",
     "MESH_OUTLIER_THRESHOLD",
     "MESH_STAKE_CAP_FRACTION",
+    "POLICY_COMMITMENT_TYPE",
+    "PolicyCommitment",
     "PRIME_Q",
     "PROOF_COEFF_RANGE",
     "PROOF_NUM_BUCKETS",
@@ -78,13 +117,22 @@ __all__ = [
     "PROOF_SKETCH_TOLERANCE_GROWTH",
     "PROOF_TOPK",
     "RNG_LABEL",
+    "ROLLOUT_BUNDLE_TYPE",
+    "RolloutBundle",
     "SigningKey",
+    "build_checkpoint_attestation",
+    "build_policy_commitment",
+    "build_rollout_bundle",
     "canonical_bytes",
     "content_addressable_id",
+    "envelope_from_dict",
     "escape_label_value",
     "hmac_sign",
     "hmac_verify",
     "sha256_canonical",
     "sha256_json",
+    "sign_envelope",
     "stable_json_dumps",
+    "verify_envelope",
+    "verify_policy_commitment",
 ]
