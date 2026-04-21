@@ -10,8 +10,12 @@ from __future__ import annotations
 from reliquary_protocol import constants
 
 
-def test_ledger_proof_version_is_v1() -> None:
-    assert constants.LEDGER_PROOF_VERSION == "v1"
+def test_ledger_proof_version_is_v5() -> None:
+    # v5 is the authoritative on-wire version. It's the value gated by
+    # reliquary_inference.protocol.signatures.verify_commit_signature,
+    # which accepts "v4" or "v5" only. Earlier v1/v2/v3 labels predate the
+    # current HMAC binding format.
+    assert constants.LEDGER_PROOF_VERSION == "v5"
 
 
 def test_prime_q_is_mersenne_m31() -> None:

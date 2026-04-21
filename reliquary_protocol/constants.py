@@ -13,7 +13,7 @@ v1 and is the authoritative source going forward.
 from __future__ import annotations
 
 # -- Identity --
-LEDGER_PROOF_VERSION: str = "v1"
+LEDGER_PROOF_VERSION: str = "v5"
 
 # -- Proof sketch --
 PRIME_Q: int = 2_147_483_647
