@@ -1,10 +1,10 @@
 """Artifact type enum + content-addressable id helpers.
 
-Every cross-subnet artifact — task_batch, completion, verdict,
-scorecard, window_manifest, run_manifest — carries a content-
-addressable id derived from its payload via canonical sha256. Both
-subnets derive the id the same way so an artifact hashes identically
-wherever it's produced.
+Every cross-runtime artifact — task_batch, completion, verdict,
+scorecard, window_manifest, run_manifest, eval_bundle — carries a
+content-addressable id derived from its payload via canonical sha256.
+Both runtimes derive the id the same way so an artifact hashes
+identically wherever it's produced.
 """
 
 from __future__ import annotations
@@ -16,11 +16,11 @@ from .canonicalization import sha256_json
 
 
 class ArtifactType(str, Enum):
-    """Enumeration of cross-subnet artifact types.
+    """Enumeration of cross-runtime artifact types.
 
-    Each subnet may additionally define local-only artifact types
+    Each runtime may additionally define local-only artifact types
     (e.g. Forge's ``distill_pack``), but this enum lists what the
-    other subnet is allowed to consume.
+    other runtime is allowed to consume.
     """
 
     TASK_BATCH = "task_batch"
@@ -33,6 +33,7 @@ class ArtifactType(str, Enum):
     ROLLOUT = "rollout"
     DISTILL_TRACE = "distill_trace"
     CHECKPOINT = "checkpoint"
+    EVAL_BUNDLE = "eval_bundle"
 
 
 #: Backwards-compatible tuple form — use this when you just need to

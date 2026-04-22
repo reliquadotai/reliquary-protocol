@@ -6,6 +6,7 @@ from .artifacts import ArtifactType, ArtifactTypes, content_addressable_id
 from .bridge import (
     BRIDGE_VERSION,
     CHECKPOINT_ATTESTATION_TYPE,
+    EVAL_BUNDLE_TYPE,
     POLICY_COMMITMENT_TYPE,
     ROLLOUT_BUNDLE_TYPE,
     BridgeEnvelope,
@@ -16,17 +17,27 @@ from .bridge import (
     BridgeVerifier,
     BridgeVersionMismatch,
     CheckpointAttestation,
+    EvalBundle,
     HmacBridgeSigner,
     HmacBridgeVerifier,
     PolicyCommitment,
     RolloutBundle,
     build_checkpoint_attestation,
+    build_eval_bundle,
     build_policy_commitment,
     build_rollout_bundle,
     envelope_from_dict,
     sign_envelope,
     verify_envelope,
     verify_policy_commitment,
+)
+from .eval_holdout import (
+    DEFAULT_HOLDOUT_SEED,
+    DEFAULT_HOLDOUT_SIZE,
+    HOLDOUT_LABEL_VERSION,
+    canonical_holdout_task_ids,
+    derive_eval_holdout_indices,
+    holdout_contains,
 )
 from .canonicalization import (
     CANONICAL_SEPARATORS,
@@ -69,7 +80,7 @@ from .signatures import (
     hmac_verify,
 )
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 
 __all__ = [
@@ -94,9 +105,14 @@ __all__ = [
     "COPYCAT_INTERVAL_LENGTH",
     "COPYCAT_INTERVAL_THRESHOLD",
     "COPYCAT_WINDOW_THRESHOLD",
+    "DEFAULT_HOLDOUT_SEED",
+    "DEFAULT_HOLDOUT_SIZE",
     "DISTRIBUTION_MIN_POSITIONS",
     "DISTRIBUTION_RATIO_BAND_HIGH",
     "DISTRIBUTION_RATIO_BAND_LOW",
+    "EVAL_BUNDLE_TYPE",
+    "EvalBundle",
+    "HOLDOUT_LABEL_VERSION",
     "HmacBridgeSigner",
     "HmacBridgeVerifier",
     "LAYER_INDEX",
@@ -120,14 +136,18 @@ __all__ = [
     "RolloutBundle",
     "SigningKey",
     "build_checkpoint_attestation",
+    "build_eval_bundle",
     "build_policy_commitment",
     "build_rollout_bundle",
     "canonical_bytes",
+    "canonical_holdout_task_ids",
     "content_addressable_id",
+    "derive_eval_holdout_indices",
     "envelope_from_dict",
     "escape_label_value",
     "hmac_sign",
     "hmac_verify",
+    "holdout_contains",
     "sha256_canonical",
     "sha256_json",
     "sign_envelope",

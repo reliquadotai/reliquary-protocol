@@ -1,7 +1,7 @@
-"""Cross-subnet bridge artifacts — closed-loop flywheel.
+"""Cross-runtime bridge artifacts — closed-loop flywheel.
 
-Three content-addressable artifacts cross the SN81 (Ledger) ↔ SN3
-(Forge) boundary:
+Four content-addressable artifacts cross the Ledger ↔ Forge runtime
+boundary (both runtimes live on the same subnet):
 
 - :class:`RolloutBundle` — a finalized Ledger window packaged for Forge
   consumption (manifest + task batch + scorecard + accepted completions
@@ -13,13 +13,17 @@ Three content-addressable artifacts cross the SN81 (Ledger) ↔ SN3
   Ledger "swap to this checkpoint at this window." In production this
   sits onchain (via ``commit_policy_metadata``); during staging /
   testnet it sits at a well-known R2 prefix and is read the same way.
+- :class:`EvalBundle` — Forge's signed held-out-benchmark result for a
+  specific policy hash, so third parties can see whether GRPO deltas
+  actually improve the model over time and re-run the eval themselves
+  from the published holdout task id list.
 
-All three:
+All four:
 
 - Are frozen dataclasses with explicit typing, serializable via
   :func:`to_dict` into JSON-stable shape.
 - Canonicalize through :mod:`reliquary_protocol.canonicalization` so
-  both subnets derive byte-identical hashes.
+  both runtimes derive byte-identical hashes.
 - Carry a :data:`BRIDGE_VERSION` tag so a shape change triggers a
   loud reject instead of a silent misparse.
 
@@ -43,12 +47,13 @@ BRIDGE_VERSION: str = "1"
 
 _ENVELOPE_VERSION: str = "1"
 
-#: The three artifact types that cross the bridge. Kept as string
+#: The four artifact types that cross the bridge. Kept as string
 #: literals so the value appears verbatim in JSON output — prevents
 #: accidental collapse to an int or enum name.
 ROLLOUT_BUNDLE_TYPE: str = "rollout_bundle"
 CHECKPOINT_ATTESTATION_TYPE: str = "checkpoint_attestation"
 POLICY_COMMITMENT_TYPE: str = "policy_commitment"
+EVAL_BUNDLE_TYPE: str = "eval_bundle"
 
 
 class BridgeError(Exception):
@@ -594,7 +599,266 @@ def verify_policy_commitment(
 
 
 # ---------------------------------------------------------------------------
-# Signed-envelope helpers (shared shape across all three artifact types)
+# EvalBundle
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class EvalBundle:
+    """Held-out benchmark result for a specific policy hash.
+
+    Forge runs the deterministic eval holdout (typically a reserved
+    slice of Hendrycks MATH) against the policy at :data:`policy_artifact_id`
+    and publishes the resulting accuracy + per-level / per-subject
+    breakdown + full per-problem correctness trace. Any third party
+    can re-derive the holdout task id list from
+    :func:`derive_eval_holdout_indices` + the seed + dataset size and
+    independently reproduce the accuracy number.
+
+    This is the artifact that turns "the flywheel runs" into "the
+    flywheel makes the model better": an auditable time-series of
+    signed accuracy measurements tagged with the policy hash that
+    produced them.
+    """
+
+    version: str
+    training_netuid: int
+    inference_netuid: int
+    eval_run_id: str
+    eval_window_id: int
+    policy_artifact_id: str
+    policy_merkle_root_hex: str
+    model_ref: str
+    holdout_version: str
+    holdout_seed: str
+    holdout_dataset: str
+    holdout_size: int
+    holdout_task_ids: tuple[str, ...]
+    n_problems: int
+    n_samples_per_problem: int
+    sampling_mode: str
+    accuracy: float
+    mean_reward: float
+    accuracy_by_level: Mapping[str, float]
+    accuracy_by_subject: Mapping[str, float]
+    per_problem_results: tuple[Mapping[str, Any], ...]
+    evaluator_hotkey: str
+    evaluated_at: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "version": self.version,
+            "training_netuid": int(self.training_netuid),
+            "inference_netuid": int(self.inference_netuid),
+            "eval_run_id": self.eval_run_id,
+            "eval_window_id": int(self.eval_window_id),
+            "policy_artifact_id": self.policy_artifact_id,
+            "policy_merkle_root_hex": self.policy_merkle_root_hex,
+            "model_ref": self.model_ref,
+            "holdout_version": self.holdout_version,
+            "holdout_seed": self.holdout_seed,
+            "holdout_dataset": self.holdout_dataset,
+            "holdout_size": int(self.holdout_size),
+            "holdout_task_ids": list(self.holdout_task_ids),
+            "n_problems": int(self.n_problems),
+            "n_samples_per_problem": int(self.n_samples_per_problem),
+            "sampling_mode": self.sampling_mode,
+            "accuracy": float(self.accuracy),
+            "mean_reward": float(self.mean_reward),
+            "accuracy_by_level": _freeze_mapping(self.accuracy_by_level),
+            "accuracy_by_subject": _freeze_mapping(self.accuracy_by_subject),
+            "per_problem_results": [_freeze_mapping(r) for r in self.per_problem_results],
+            "evaluator_hotkey": self.evaluator_hotkey,
+            "evaluated_at": self.evaluated_at,
+        }
+
+    def canonical_bytes(self) -> bytes:
+        return canonical_bytes(self.to_dict())
+
+    def artifact_id(self) -> str:
+        return sha256_json(self.to_dict())
+
+    def storage_key(self) -> str:
+        """Key format: ``eval_bundles/<training_netuid>/<eval_window_id>/<eval_run_id>.json``."""
+        return (
+            f"eval_bundles/{int(self.training_netuid)}/"
+            f"{int(self.eval_window_id)}/{self.eval_run_id}.json"
+        )
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "EvalBundle":
+        _expect_version(data, "EvalBundle")
+        required = (
+            "training_netuid",
+            "inference_netuid",
+            "eval_run_id",
+            "eval_window_id",
+            "policy_artifact_id",
+            "policy_merkle_root_hex",
+            "model_ref",
+            "holdout_version",
+            "holdout_seed",
+            "holdout_dataset",
+            "holdout_size",
+            "holdout_task_ids",
+            "n_problems",
+            "n_samples_per_problem",
+            "sampling_mode",
+            "accuracy",
+            "mean_reward",
+            "accuracy_by_level",
+            "accuracy_by_subject",
+            "per_problem_results",
+            "evaluator_hotkey",
+            "evaluated_at",
+        )
+        for fname in required:
+            if fname not in data:
+                raise BridgeSchemaError(
+                    f"EvalBundle missing required field {fname!r}"
+                )
+        accuracy = float(data["accuracy"])
+        if not (0.0 <= accuracy <= 1.0):
+            raise BridgeSchemaError(
+                f"EvalBundle.accuracy must be in [0,1]; got {accuracy}"
+            )
+        mean_reward = float(data["mean_reward"])
+        if not (0.0 <= mean_reward <= 1.0):
+            raise BridgeSchemaError(
+                f"EvalBundle.mean_reward must be in [0,1]; got {mean_reward}"
+            )
+        n_problems = int(data["n_problems"])
+        if n_problems < 0:
+            raise BridgeSchemaError(
+                f"EvalBundle.n_problems must be non-negative; got {n_problems}"
+            )
+        return cls(
+            version=str(data["version"]),
+            training_netuid=int(data["training_netuid"]),
+            inference_netuid=int(data["inference_netuid"]),
+            eval_run_id=str(data["eval_run_id"]),
+            eval_window_id=int(data["eval_window_id"]),
+            policy_artifact_id=str(data["policy_artifact_id"]),
+            policy_merkle_root_hex=str(data["policy_merkle_root_hex"]),
+            model_ref=str(data["model_ref"]),
+            holdout_version=str(data["holdout_version"]),
+            holdout_seed=str(data["holdout_seed"]),
+            holdout_dataset=str(data["holdout_dataset"]),
+            holdout_size=int(data["holdout_size"]),
+            holdout_task_ids=tuple(str(t) for t in data["holdout_task_ids"]),
+            n_problems=n_problems,
+            n_samples_per_problem=int(data["n_samples_per_problem"]),
+            sampling_mode=str(data["sampling_mode"]),
+            accuracy=accuracy,
+            mean_reward=mean_reward,
+            accuracy_by_level=_freeze_mapping(data["accuracy_by_level"]),
+            accuracy_by_subject=_freeze_mapping(data["accuracy_by_subject"]),
+            per_problem_results=tuple(
+                _freeze_mapping(r) for r in data["per_problem_results"]
+            ),
+            evaluator_hotkey=str(data["evaluator_hotkey"]),
+            evaluated_at=str(data["evaluated_at"]),
+        )
+
+
+def build_eval_bundle(
+    *,
+    training_netuid: int,
+    inference_netuid: int,
+    eval_run_id: str,
+    eval_window_id: int,
+    policy_artifact_id: str,
+    policy_merkle_root_hex: str,
+    model_ref: str,
+    holdout_version: str,
+    holdout_seed: str,
+    holdout_dataset: str,
+    holdout_size: int,
+    holdout_task_ids: Sequence[str],
+    n_samples_per_problem: int,
+    sampling_mode: str,
+    per_problem_results: Sequence[Mapping[str, Any]],
+    evaluator_hotkey: str,
+    accuracy_by_level: Mapping[str, float] | None = None,
+    accuracy_by_subject: Mapping[str, float] | None = None,
+    evaluated_at: str | None = None,
+) -> EvalBundle:
+    """Construct an :class:`EvalBundle` with computed aggregates.
+
+    ``accuracy`` and ``mean_reward`` are computed directly from
+    ``per_problem_results`` (each entry is expected to carry a
+    ``correctness`` float in [0,1]). Per-level / per-subject breakdowns
+    are computed from ``level`` / ``subject`` fields on each result
+    unless the caller passes them in explicitly (e.g. to include 0-count
+    bucket entries).
+
+    ``holdout_task_ids`` is sorted lexicographically before canonicalization
+    so the bundle id is stable regardless of evaluation order.
+    """
+    results = [_freeze_mapping(r) for r in per_problem_results]
+    n = len(results)
+    if n == 0:
+        accuracy = 0.0
+        mean_reward = 0.0
+    else:
+        correctness_sum = sum(float(r.get("correctness", 0.0)) for r in results)
+        accuracy_sum = sum(1.0 if float(r.get("correctness", 0.0)) >= 1.0 else 0.0 for r in results)
+        accuracy = accuracy_sum / n
+        mean_reward = correctness_sum / n
+
+    if accuracy_by_level is None:
+        accuracy_by_level = _bucket_accuracy(results, "level")
+    if accuracy_by_subject is None:
+        accuracy_by_subject = _bucket_accuracy(results, "subject")
+
+    if evaluated_at is None:
+        evaluated_at = _utc_now_iso()
+
+    return EvalBundle(
+        version=BRIDGE_VERSION,
+        training_netuid=int(training_netuid),
+        inference_netuid=int(inference_netuid),
+        eval_run_id=str(eval_run_id),
+        eval_window_id=int(eval_window_id),
+        policy_artifact_id=str(policy_artifact_id),
+        policy_merkle_root_hex=str(policy_merkle_root_hex),
+        model_ref=str(model_ref),
+        holdout_version=str(holdout_version),
+        holdout_seed=str(holdout_seed),
+        holdout_dataset=str(holdout_dataset),
+        holdout_size=int(holdout_size),
+        holdout_task_ids=tuple(sorted(str(t) for t in holdout_task_ids)),
+        n_problems=n,
+        n_samples_per_problem=int(n_samples_per_problem),
+        sampling_mode=str(sampling_mode),
+        accuracy=accuracy,
+        mean_reward=mean_reward,
+        accuracy_by_level=_freeze_mapping(accuracy_by_level),
+        accuracy_by_subject=_freeze_mapping(accuracy_by_subject),
+        per_problem_results=tuple(results),
+        evaluator_hotkey=str(evaluator_hotkey),
+        evaluated_at=str(evaluated_at),
+    )
+
+
+def _bucket_accuracy(
+    results: Sequence[Mapping[str, Any]], key: str
+) -> dict[str, float]:
+    """Compute per-bucket accuracy from per-problem results.
+
+    Entries whose ``key`` field is missing or empty land in the ``"unknown"``
+    bucket so no result is silently dropped from aggregates.
+    """
+    buckets: dict[str, list[float]] = {}
+    for r in results:
+        bucket_key = str(r.get(key) or "unknown")
+        correctness = 1.0 if float(r.get("correctness", 0.0)) >= 1.0 else 0.0
+        buckets.setdefault(bucket_key, []).append(correctness)
+    return {k: (sum(v) / len(v) if v else 0.0) for k, v in buckets.items()}
+
+
+# ---------------------------------------------------------------------------
+# Signed-envelope helpers (shared shape across all four artifact types)
 # ---------------------------------------------------------------------------
 
 
@@ -643,7 +907,11 @@ class BridgeEnvelope:
 
 def sign_envelope(
     artifact_type: str,
-    payload: Mapping[str, Any] | RolloutBundle | CheckpointAttestation | PolicyCommitment,
+    payload: Mapping[str, Any]
+    | RolloutBundle
+    | CheckpointAttestation
+    | PolicyCommitment
+    | EvalBundle,
     signer: BridgeSigner,
     signed_at: str | None = None,
 ) -> BridgeEnvelope:
@@ -657,6 +925,7 @@ def sign_envelope(
         ROLLOUT_BUNDLE_TYPE,
         CHECKPOINT_ATTESTATION_TYPE,
         POLICY_COMMITMENT_TYPE,
+        EVAL_BUNDLE_TYPE,
     ):
         raise BridgeSchemaError(f"unknown artifact_type {artifact_type!r}")
     if signed_at is None:
@@ -806,6 +1075,8 @@ __all__ = [
     "BridgeVersionMismatch",
     "CheckpointAttestation",
     "CHECKPOINT_ATTESTATION_TYPE",
+    "EVAL_BUNDLE_TYPE",
+    "EvalBundle",
     "HmacBridgeSigner",
     "HmacBridgeVerifier",
     "POLICY_COMMITMENT_TYPE",
@@ -813,6 +1084,7 @@ __all__ = [
     "ROLLOUT_BUNDLE_TYPE",
     "RolloutBundle",
     "build_checkpoint_attestation",
+    "build_eval_bundle",
     "build_policy_commitment",
     "build_rollout_bundle",
     "envelope_from_dict",

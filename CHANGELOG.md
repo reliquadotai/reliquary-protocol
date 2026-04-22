@@ -2,10 +2,26 @@
 
 All notable changes to **reliquary-protocol** are documented here. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
-both Reliquary subnets pin to an exact version of this package so a
+both Reliquary runtimes pin to an exact version of this package so a
 version bump here requires a coordinated pin bump on
 [`reliquary-inference`](https://github.com/0xgrizz/reliquary-inference) and
 [`reliquary`](https://github.com/0xgrizz/reliquary) in the same release window.
+
+## [0.3.0] - 2026-04-23
+
+### Added
+- `EvalBundle` — fourth bridge artifact type for published held-out
+  benchmark results. Carries the policy hash + merkle root + per-level
+  / per-subject accuracy + full per-problem correctness trace + the
+  holdout task id list so third parties can re-run the eval
+  independently. Signed via `sign_envelope(EVAL_BUNDLE_TYPE, ...)`.
+- `eval_holdout` module — deterministic holdout-index derivation
+  (`derive_eval_holdout_indices`, `holdout_contains`,
+  `canonical_holdout_task_ids`). Seed + dataset size + holdout size →
+  byte-identical index list across both runtimes without any shared
+  state. Uses `sha256(label || params)` as RNG seed + `random.sample`
+  for platform-stable draws.
+- `ArtifactType.EVAL_BUNDLE` in the cross-runtime artifact enum.
 
 ## [Unreleased]
 
