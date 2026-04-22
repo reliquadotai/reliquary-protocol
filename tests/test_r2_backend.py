@@ -123,18 +123,28 @@ def test_get_returns_none_on_404() -> None:
         assert backend.get("missing.bin") is None
 
 
-def test_get_raises_on_non_404_error() -> None:
+def test_get_raises_on_non_404_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    # 5xx is a transient server error — backend retries max_retries times
+    # with exponential backoff before surfacing. Zero out the sleep so the
+    # test doesn't wait for the backoff schedule.
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+
     backend = _backend()
     import urllib.error
 
-    err = urllib.error.HTTPError(
-        url="...", code=500, msg="Internal", hdrs=None, fp=io.BytesIO(b"boom"),  # type: ignore[arg-type]
-    )
-    opener = _fake_urlopen([err])
+    def make_err() -> urllib.error.HTTPError:
+        return urllib.error.HTTPError(
+            url="...", code=500, msg="Internal", hdrs=None, fp=io.BytesIO(b"boom"),  # type: ignore[arg-type]
+        )
+
+    errs = [make_err() for _ in range(backend.max_retries)]
+    opener = _fake_urlopen(errs)
     with mock.patch("urllib.request.urlopen", opener):
         with pytest.raises(R2RequestError) as exc:
             backend.get("any.bin")
     assert exc.value.status == 500
+    # Every attempt made the round trip.
+    assert len(opener.calls) == backend.max_retries  # type: ignore[attr-defined]
 
 
 def test_list_paginates_until_empty_cursor() -> None:
@@ -169,14 +179,18 @@ def test_delete_404_is_silent() -> None:
         backend.delete("already-gone")  # should not raise
 
 
-def test_delete_non_404_raises() -> None:
+def test_delete_non_404_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("time.sleep", lambda *_: None)
     backend = _backend()
     import urllib.error
 
-    err = urllib.error.HTTPError(
-        url="...", code=500, msg="Internal", hdrs=None, fp=io.BytesIO(b""),  # type: ignore[arg-type]
-    )
-    opener = _fake_urlopen([err])
+    def make_err() -> urllib.error.HTTPError:
+        return urllib.error.HTTPError(
+            url="...", code=500, msg="Internal", hdrs=None, fp=io.BytesIO(b""),  # type: ignore[arg-type]
+        )
+
+    errs = [make_err() for _ in range(backend.max_retries)]
+    opener = _fake_urlopen(errs)
     with mock.patch("urllib.request.urlopen", opener):
         with pytest.raises(R2RequestError):
             backend.delete("any")
@@ -228,12 +242,60 @@ def test_validate_key_accepts_valid_paths() -> None:
     _validate_key("checkpoints/run-1/window_42/manifest.json")
 
 
-def test_network_error_wraps_as_backend_error() -> None:
+def test_transient_429_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A single 429 then success on retry mirrors CloudFlare's rate-limit
+    behaviour under mesh load — the retry must actually make a second
+    round trip and the caller must see the successful payload."""
+    monkeypatch.setattr("time.sleep", lambda *_: None)
     backend = _backend()
     import urllib.error
 
-    url_err = urllib.error.URLError("connection refused")
-    opener = _fake_urlopen([url_err])
+    rate_limit = urllib.error.HTTPError(
+        url="...", code=429, msg="Too Many Requests", hdrs=None, fp=io.BytesIO(b"slow down"),  # type: ignore[arg-type]
+    )
+    success = _FakeResponse(b"payload-ok")
+    opener = _fake_urlopen([rate_limit, success])
+    with mock.patch("urllib.request.urlopen", opener):
+        body = backend.get("k.bin")
+    assert body == b"payload-ok"
+    assert len(opener.calls) == 2  # type: ignore[attr-defined]
+
+
+def test_transient_timeout_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    import socket
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+    backend = _backend()
+
+    opener = _fake_urlopen([socket.timeout("read timeout"), _FakeResponse(b"ok")])
+    with mock.patch("urllib.request.urlopen", opener):
+        body = backend.get("k.bin")
+    assert body == b"ok"
+
+
+def test_404_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    """404 is a caller-contract error, not a transient server issue —
+    we should surface it immediately without burning retries."""
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+    backend = _backend()
+    import urllib.error
+
+    err = urllib.error.HTTPError(
+        url="...", code=404, msg="Not Found", hdrs=None, fp=io.BytesIO(b""),  # type: ignore[arg-type]
+    )
+    opener = _fake_urlopen([err])
+    with mock.patch("urllib.request.urlopen", opener):
+        assert backend.get("missing.bin") is None
+    assert len(opener.calls) == 1  # type: ignore[attr-defined]
+
+
+def test_network_error_wraps_as_backend_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Network errors are transient — backend retries, then surfaces.
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+    backend = _backend()
+    import urllib.error
+
+    url_errs = [urllib.error.URLError("connection refused") for _ in range(backend.max_retries)]
+    opener = _fake_urlopen(url_errs)
     with mock.patch("urllib.request.urlopen", opener):
         with pytest.raises(R2BackendError):
             backend.put("k", b"x")

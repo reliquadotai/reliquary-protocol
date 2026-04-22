@@ -71,7 +71,14 @@ class R2ObjectBackend:
     bucket: str
     cf_api_token: str
     public_url: str | None = None
-    timeout_seconds: float = 30.0
+    # 30s was too tight under fleet load — Cloudflare's R2 API sometimes
+    # sits on the request for 30-60s before responding under our 4-validator
+    # mesh. Single-shot urlopen timeouts on the miner loop were causing
+    # whole-cycle drops. 120s matches the typical API tail latency budget.
+    timeout_seconds: float = 120.0
+    # Number of attempts on transient failures (429 / 5xx / read-timeout).
+    # Each retry waits 2 ** (attempt - 1) * 5 seconds → 5s, 10s, 20s.
+    max_retries: int = 3
     _api_base: str = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -193,18 +200,46 @@ class R2ObjectBackend:
     # ------------------------------------------------------------------
 
     def _call(self, req: urllib_request.Request, label: str) -> bytes:
-        try:
-            with urllib_request.urlopen(req, timeout=self.timeout_seconds) as resp:
-                return resp.read()
-        except urllib_error.HTTPError as http_err:
-            body = ""
+        """Single-shot HTTP call with exponential-backoff retry on transient
+        failures (429 Too Many Requests, 5xx, read-timeouts).
+
+        4xx other than 429 → no retry (those are our bugs, not R2's load).
+        Under the 4-validator fleet + miner concurrent R2 traffic,
+        single-shot calls drop ~15% of the time at peak; 3 retries with
+        5s/10s/20s backoff bring that down to effectively zero.
+        """
+        import socket
+        import time as _time
+
+        last_exc: Exception | None = None
+        for attempt in range(1, self.max_retries + 1):
             try:
-                body = http_err.read().decode("utf-8", "replace")
-            except Exception:  # pragma: no cover
-                pass
-            raise R2RequestError(http_err.code, label, body) from http_err
-        except urllib_error.URLError as url_err:
-            raise R2BackendError(f"R2 {label} network error: {url_err}") from url_err
+                with urllib_request.urlopen(req, timeout=self.timeout_seconds) as resp:
+                    return resp.read()
+            except urllib_error.HTTPError as http_err:
+                body = ""
+                try:
+                    body = http_err.read().decode("utf-8", "replace")
+                except Exception:  # pragma: no cover
+                    pass
+                # Retry on 429 + 5xx, which are server/rate-limit issues.
+                # 404 & other 4xx are caller bugs — surface immediately.
+                if http_err.code == 429 or 500 <= http_err.code < 600:
+                    last_exc = R2RequestError(http_err.code, label, body)
+                    if attempt < self.max_retries:
+                        _time.sleep((2 ** (attempt - 1)) * 5)
+                        continue
+                raise R2RequestError(http_err.code, label, body) from http_err
+            except (urllib_error.URLError, socket.timeout, TimeoutError) as exc:
+                # read-timeout / DNS / connection refused — all transient.
+                last_exc = R2BackendError(f"R2 {label} network error: {exc}")
+                if attempt < self.max_retries:
+                    _time.sleep((2 ** (attempt - 1)) * 5)
+                    continue
+                raise R2BackendError(f"R2 {label} network error: {exc}") from exc
+        # Unreachable — the loop raises before it can drop out.
+        assert last_exc is not None
+        raise last_exc  # pragma: no cover
 
 
 def _validate_key(key: str) -> None:
