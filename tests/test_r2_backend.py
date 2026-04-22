@@ -167,6 +167,48 @@ def test_list_paginates_until_empty_cursor() -> None:
     assert keys == ["a.json", "b.json", "c.json"]
 
 
+def test_list_detailed_reads_last_modified_field() -> None:
+    """Real CF R2 API returns `last_modified` (not `uploaded`). Verify
+    list_detailed surfaces it as the `uploaded` field on our dict."""
+    backend = _backend()
+    page = {
+        "success": True,
+        "result": [
+            {"key": "a.json", "size": 42, "last_modified": "2026-04-22T15:15:10.979Z", "etag": "e1"},
+            {"key": "b.json", "size": 7, "last_modified": "2026-04-21T13:12:34.000Z", "etag": "e2"},
+        ],
+        "result_info": {},
+    }
+    opener = _fake_urlopen([_FakeResponse(json.dumps(page).encode())])
+    with mock.patch("urllib.request.urlopen", opener):
+        objs = backend.list_detailed("verdicts/")
+    assert [o["uploaded"] for o in objs] == [
+        "2026-04-22T15:15:10.979Z",
+        "2026-04-21T13:12:34.000Z",
+    ]
+    assert [o["size"] for o in objs] == [42, 7]
+    assert [o["etag"] for o in objs] == ["e1", "e2"]
+
+
+def test_list_detailed_falls_back_on_alternate_field_names() -> None:
+    """If a future CF API version ships `uploaded` or S3-style
+    `LastModified`, we should still pick it up."""
+    backend = _backend()
+    page = {
+        "success": True,
+        "result": [
+            {"key": "a.json", "uploaded": "2026-01-01T00:00:00Z"},
+            {"key": "b.json", "LastModified": "2026-02-02T00:00:00Z"},
+        ],
+        "result_info": {},
+    }
+    opener = _fake_urlopen([_FakeResponse(json.dumps(page).encode())])
+    with mock.patch("urllib.request.urlopen", opener):
+        objs = backend.list_detailed("verdicts/")
+    assert objs[0]["uploaded"] == "2026-01-01T00:00:00Z"
+    assert objs[1]["uploaded"] == "2026-02-02T00:00:00Z"
+
+
 def test_delete_404_is_silent() -> None:
     backend = _backend()
     import urllib.error

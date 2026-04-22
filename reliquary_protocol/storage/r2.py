@@ -184,11 +184,21 @@ class R2ObjectBackend:
                 key = obj.get("key")
                 if not isinstance(key, str):
                     continue
+                # CloudFlare R2 returns "last_modified" (with an underscore)
+                # rather than S3-style "LastModified" or a simpler "uploaded".
+                # Fall back to the alternatives so we survive any future API
+                # tweak — callers only care that SOME timestamp is exposed.
+                uploaded = (
+                    obj.get("last_modified")
+                    or obj.get("uploaded")
+                    or obj.get("LastModified")
+                    or ""
+                )
                 objects.append(
                     {
                         "key": key,
                         "size": int(obj.get("size") or 0),
-                        "uploaded": obj.get("uploaded") or "",
+                        "uploaded": uploaded,
                         "etag": obj.get("etag") or "",
                     }
                 )
