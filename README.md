@@ -1,23 +1,33 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 # reliquary-protocol
 
-Shared protocol types, canonicalization, and crypto primitives for the two
-Reliquary subnets — **Ledger** (SN81, repo: `reliquary-inference`) and
-**Forge** (SN3 target, repo: `reliquary`).
+Shared protocol package for the two Reliquary subnets —
+[**Ledger**](https://github.com/0xgrizz/reliquary-inference) (inference runtime,
+testnet netuid 462) and [**Forge**](https://github.com/0xgrizz/reliquary)
+(trainer-quorum runtime). Canonical serialization, cross-subnet crypto, and
+the on-chain bridge envelopes live here so the two subnets stay byte-identical.
 
 This package is the single authoritative home of:
 
 - **Canonical serialization**: `stable_json_dumps`, `sha256_json`,
-  `canonical_bytes` — the byte-exact sort-keys JSON used for every
+  `canonical_bytes` — byte-exact sort-keys JSON used for every
   content-addressable hash on either subnet.
 - **Protocol constants**: proof-layer math parameters (`PRIME_Q`,
   `CHALLENGE_K`, `PROOF_TOPK`, sketch tolerance), consensus parameters
   (mesh stake cap, quorum, outlier gate), distribution validator bands.
-- **Signature primitives**: HMAC-SHA256 sign / verify helpers for
-  mesh verdicts and distillation traces — the exact same format both
-  subnets emit and check.
+- **Signature primitives**: HMAC-SHA256 sign/verify helpers for mesh
+  verdicts, distillation traces, and bridge envelopes — the exact same
+  format both subnets emit and check.
 - **Artifact identity**: `content_addressable_id(payload)` + the
-  `ArtifactTypes` enum covering types used cross-subnet (task_batch,
-  completion, verdict, scorecard, window_manifest, run_manifest).
+  `ArtifactTypes` enum covering cross-subnet types (task_batch, completion,
+  verdict, scorecard, window_manifest, run_manifest, rollout_bundle).
+- **Storage backends**: `R2ObjectBackend` with 429/5xx retry + exponential
+  backoff, `list_detailed()` exposing CF's `last_modified` for
+  key-sorted artifact scans.
+- **Bridge envelopes**: `sign_envelope` / `verify_envelope` / `RolloutBundle` /
+  `envelope_from_dict` — the wire format Ledger's `RolloutBundlePublisher` and
+  Forge's `InferenceRegistryAdapter` use to pass training data across subnets.
 
 ## Why it exists
 
