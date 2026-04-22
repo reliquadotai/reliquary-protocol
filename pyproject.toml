@@ -1,21 +1,55 @@
 [project]
 name = "reliquary-protocol"
 version = "0.1.0"
-description = "Shared protocol types, canonicalization, and crypto primitives for Reliquary Ledger + Forge."
+description = "Shared protocol package for Reliquary Ledger + Forge — canonical serialization, crypto primitives, R2 backend, bridge envelopes."
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
-authors = [{name = "Reliquary"}]
+license = { text = "MIT" }
+authors = [{ name = "Reliquary contributors" }]
+keywords = [
+  "bittensor",
+  "subnet",
+  "reliquary",
+  "protocol",
+  "cryptography",
+  "r2",
+  "cloudflare",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://github.com/0xgrizz/reliquary-protocol"
+Repository = "https://github.com/0xgrizz/reliquary-protocol"
+Issues = "https://github.com/0xgrizz/reliquary-protocol/issues"
+Changelog = "https://github.com/0xgrizz/reliquary-protocol/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
     "hypothesis>=6.100.0",
+    "ruff>=0.5.0",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["E402"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

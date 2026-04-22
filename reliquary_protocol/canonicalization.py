@@ -14,7 +14,6 @@ import hashlib
 import json
 from typing import Any
 
-
 CANONICAL_SEPARATORS: tuple[str, str] = (",", ":")
 
 

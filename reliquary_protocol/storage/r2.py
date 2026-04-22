@@ -35,7 +35,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Iterable
+from typing import Any, Iterable
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 from urllib.parse import quote

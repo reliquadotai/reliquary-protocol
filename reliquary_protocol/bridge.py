@@ -32,13 +32,12 @@ envelope shape stable.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping, Protocol, Sequence
 
 from .canonicalization import canonical_bytes, sha256_json, stable_json_dumps
 from .signatures import hmac_sign, hmac_verify
-
 
 BRIDGE_VERSION: str = "1"
 

@@ -5,6 +5,9 @@ from __future__ import annotations
 from .artifacts import ArtifactType, ArtifactTypes, content_addressable_id
 from .bridge import (
     BRIDGE_VERSION,
+    CHECKPOINT_ATTESTATION_TYPE,
+    POLICY_COMMITMENT_TYPE,
+    ROLLOUT_BUNDLE_TYPE,
     BridgeEnvelope,
     BridgeError,
     BridgeSchemaError,
@@ -12,13 +15,10 @@ from .bridge import (
     BridgeSigner,
     BridgeVerifier,
     BridgeVersionMismatch,
-    CHECKPOINT_ATTESTATION_TYPE,
     CheckpointAttestation,
     HmacBridgeSigner,
     HmacBridgeVerifier,
-    POLICY_COMMITMENT_TYPE,
     PolicyCommitment,
-    ROLLOUT_BUNDLE_TYPE,
     RolloutBundle,
     build_checkpoint_attestation,
     build_policy_commitment,
@@ -68,7 +68,6 @@ from .signatures import (
     hmac_sign,
     hmac_verify,
 )
-
 
 VERSION = "0.2.0"
 

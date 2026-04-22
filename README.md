@@ -1,3 +1,5 @@
+[![CI](https://github.com/0xgrizz/reliquary-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/0xgrizz/reliquary-protocol/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 # reliquary-protocol
@@ -51,7 +53,9 @@ simultaneously on both sides. Version-upgrade runbook:
 4. Mainnet rollout on a well-known block height; validators voting the
    upgrade commit their intent onchain before the cutover.
 5. Any subnet still on the old version after the cutover is considered
-   slash-eligible (TODO: wire into governance charter).
+   out-of-spec and its verdicts are rejected by up-to-date mesh peers.
+   Slashing-style enforcement lands when the governance charter is
+   committed on-chain (tracked in the protocol paper §12).
 
 ## Install
 

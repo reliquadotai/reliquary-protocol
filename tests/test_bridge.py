@@ -8,16 +8,16 @@ import pytest
 
 from reliquary_protocol import (
     BRIDGE_VERSION,
+    CHECKPOINT_ATTESTATION_TYPE,
+    POLICY_COMMITMENT_TYPE,
+    ROLLOUT_BUNDLE_TYPE,
     BridgeEnvelope,
     BridgeSchemaError,
     BridgeVersionMismatch,
-    CHECKPOINT_ATTESTATION_TYPE,
     CheckpointAttestation,
     HmacBridgeSigner,
     HmacBridgeVerifier,
-    POLICY_COMMITMENT_TYPE,
     PolicyCommitment,
-    ROLLOUT_BUNDLE_TYPE,
     RolloutBundle,
     build_checkpoint_attestation,
     build_policy_commitment,
@@ -29,7 +29,6 @@ from reliquary_protocol import (
     verify_envelope,
     verify_policy_commitment,
 )
-
 
 # ---------------------------------------------------------------------------
 # RolloutBundle
