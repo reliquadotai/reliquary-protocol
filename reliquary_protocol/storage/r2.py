@@ -153,7 +153,17 @@ class R2ObjectBackend:
 
     def list(self, prefix: str) -> list[str]:
         """List keys under ``prefix``. Paginates until exhausted."""
-        keys: list[str] = []
+        return [entry["key"] for entry in self.list_detailed(prefix)]
+
+    def list_detailed(self, prefix: str) -> list[dict[str, Any]]:
+        """List objects under ``prefix`` with metadata: ``[{key, size, uploaded, etag}]``.
+
+        Hits the same list endpoint as ``list()`` but preserves the per-
+        object metadata that CloudFlare returns. Callers that need to
+        sort by upload time (e.g. "fetch latest N artifacts") use this
+        to avoid a full O(N) body-fetch just to compare timestamps.
+        """
+        objects: list[dict[str, Any]] = []
         cursor: str | None = None
         while True:
             qs = f"prefix={quote(prefix)}&per_page=1000"
@@ -172,12 +182,20 @@ class R2ObjectBackend:
                 raise R2RequestError(200, "list", f"non-JSON response: {exc}") from exc
             for obj in payload.get("result") or []:
                 key = obj.get("key")
-                if isinstance(key, str):
-                    keys.append(key)
+                if not isinstance(key, str):
+                    continue
+                objects.append(
+                    {
+                        "key": key,
+                        "size": int(obj.get("size") or 0),
+                        "uploaded": obj.get("uploaded") or "",
+                        "etag": obj.get("etag") or "",
+                    }
+                )
             cursor = (payload.get("result_info") or {}).get("cursor")
             if not cursor:
                 break
-        return keys
+        return objects
 
     def delete(self, key: str) -> None:
         _validate_key(key)
