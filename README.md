@@ -1,12 +1,12 @@
-[![CI](https://github.com/0xgrizz/reliquary-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/0xgrizz/reliquary-protocol/actions/workflows/ci.yml)
+[![CI](https://github.com/reliquadotai/reliquary-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/reliquadotai/reliquary-protocol/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 # reliquary-protocol
 
 Shared protocol package for the two Reliquary runtimes —
-[**Ledger**](https://github.com/0xgrizz/reliquary-inference) (inference runtime,
-testnet netuid 462) and [**Forge**](https://github.com/0xgrizz/reliquary)
+[**Ledger**](https://github.com/reliquadotai/reliquary-inference) (inference runtime,
+testnet netuid 462) and [**Forge**](https://github.com/reliquadotai/reliquary)
 (trainer-quorum runtime) — which run as companion protocols under a single
 subnet. Canonical serialization, shared crypto primitives, and the on-chain
 bridge envelopes live here so both runtimes stay byte-identical.

@@ -28,10 +28,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/0xgrizz/reliquary-protocol"
-Repository = "https://github.com/0xgrizz/reliquary-protocol"
-Issues = "https://github.com/0xgrizz/reliquary-protocol/issues"
-Changelog = "https://github.com/0xgrizz/reliquary-protocol/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/reliquadotai/reliquary-protocol"
+Repository = "https://github.com/reliquadotai/reliquary-protocol"
+Issues = "https://github.com/reliquadotai/reliquary-protocol/issues"
+Changelog = "https://github.com/reliquadotai/reliquary-protocol/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
