@@ -4,8 +4,8 @@ All notable changes to **reliquary-protocol** are documented here. The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 both Reliquary runtimes pin to an exact version of this package so a
 version bump here requires a coordinated pin bump on
-[`reliquary-inference`](https://github.com/reliquadotai/reliquary-inference) and
-[`reliquary`](https://github.com/reliquadotai/reliquary) in the same release window.
+[`reliquary-ledger`](https://github.com/reliquadotai/reliquary-ledger) and
+[`reliquary-forge`](https://github.com/reliquadotai/reliquary-forge) in the same release window.
 
 ## [0.3.0] - 2026-04-23
 

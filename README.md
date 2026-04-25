@@ -5,8 +5,8 @@
 # reliquary-protocol
 
 Shared protocol package for the two Reliquary runtimes —
-[**Ledger**](https://github.com/reliquadotai/reliquary-inference) (inference runtime,
-testnet netuid 462) and [**Forge**](https://github.com/reliquadotai/reliquary)
+[**Ledger**](https://github.com/reliquadotai/reliquary-ledger) (inference runtime,
+testnet netuid 462) and [**Forge**](https://github.com/reliquadotai/reliquary-forge)
 (trainer-quorum runtime) — which run as companion protocols under a single
 subnet. Canonical serialization, shared crypto primitives, and the on-chain
 bridge envelopes live here so both runtimes stay byte-identical.
@@ -48,7 +48,7 @@ version in its own `pyproject.toml` so a coordinated upgrade lands
 simultaneously on both sides. Version-upgrade runbook:
 
 1. Bump `reliquary-protocol` minor version.
-2. Land the matching bump on `reliquary` and `reliquary-inference` `pyproject.toml`
+2. Land the matching bump on `reliquary-forge` and `reliquary-ledger` `pyproject.toml`
    in a single PR each.
 3. Testnet bake for 24h — both runtimes running the new protocol version.
 4. Mainnet rollout on a well-known block height; validators voting the
