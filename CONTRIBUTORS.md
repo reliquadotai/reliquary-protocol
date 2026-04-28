@@ -10,7 +10,7 @@ abstraction, and the cross-runtime bridge envelopes
 ## Maintainers
 
 - [@0xgrizz](https://github.com/0xgrizz)
-- [@0xShonen](https://github.com/0xShonen)
+- [@0xgrizz](https://github.com/0xgrizz) (formerly active under another GitHub alias on early commits)
 
 ## Acknowledgments
 
@@ -29,6 +29,6 @@ SN81 implementation at
 [romain13190/reliquary](https://github.com/romain13190/reliquary)
 which derives independently from the same upstream `grail` primitives.
 Forensic review confirmed neither codebase imported from the other.
-The shared protocol primitives in this package and his single-repo
-implementation converge because both descend from `grail`, not because
-either copied the other.
+The shared protocol primitives in this package and the upstream
+single-repo implementation converge because both descend from `grail`,
+not because either copied the other.
