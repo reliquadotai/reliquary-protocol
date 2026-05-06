@@ -2,6 +2,8 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+> **Looking for the canonical Reliquary subnet?** The mainnet implementation lives at **[`reliquadotai/reliquary`](https://github.com/reliquadotai/reliquary)** (subnet 81). It vendors its own copy of the protocol primitives below into a single repo so operators don't have to track three packages. This standalone `reliquary-protocol` repo remains the cross-runtime reference for the GRAIL sketch primitive, canonical serialization, HMAC bridge envelopes, and R2 backend — useful if you're consuming Reliquary's signed artifacts from a third-party tool.
+
 # reliquary-protocol
 
 Shared protocol package for the two Reliquary runtimes —
