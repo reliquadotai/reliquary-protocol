@@ -30,3 +30,12 @@ secrets/
 *.key
 id_rsa*
 *.sealed
+
+/test-results/
+
+/.private-research/
+
+/reports/private/
+
+*.private.*
+htmlcov/
